@@ -8,12 +8,14 @@ case class MovingAverage(name: String, interval: Long)
 case class DisplayUnit(name: String, unit: Long)
 
 object DisplayUnitMillion extends DisplayUnit("Million", 1000000l)
-object DisplayUnitThousand extends DisplayUnit("Million", 1000l)
+object DisplayUnitThousand extends DisplayUnit("Thousand", 1000l)
 object DisplayUnitDefault extends DisplayUnit("", 1l)
 
 class ItemCountStatus(val name : String,
                       private val movingAveragesParam : Seq[MovingAverage] = Nil,
-                      val displayUnit : DisplayUnit = DisplayUnitDefault) {
+                      val displayUnit : DisplayUnit = DisplayUnitDefault,
+                      val showUnit : Boolean = true,
+                      val showAverage : Boolean = true) {
 
   val startTime = System.currentTimeMillis
   var count : Long = 0

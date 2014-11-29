@@ -8,7 +8,7 @@ class statusconsoleSpec extends FlatSpec with ShouldMatchers {
   val statusConsole = new StatusConsole();
 
   val COUNT = "count"
-  val COUNT_THOUSAND = "count thousand"
+  val COUNT_THOUSAND = "count "
   val FIZZ = "fizz"
   val BUZZ = "buzz"
   val FIZZ_BUZZ = "fizz buzz"
@@ -30,11 +30,13 @@ class statusconsoleSpec extends FlatSpec with ShouldMatchers {
       )
 
     for (i <- 0 to 10000000) {
-      Thread.sleep(1)
 
       statusInfo.getItemCountStatus(COUNT).get.incCount
+      statusInfo.getItemCountStatus(COUNT_THOUSAND).get.incCount
 
       if (0 == (i % 15)) {
+
+        Thread.sleep(1)
 
         statusInfo.getItemCountStatus(FIZZ_BUZZ).get.incCount
       } else if (0 == (i % 5)) {
