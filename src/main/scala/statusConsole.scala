@@ -8,10 +8,12 @@ case class MovingAverage(name: String, interval: Long)
 case class DisplayUnit(name: String, unit: Long)
 
 object DisplayUnitMillion extends DisplayUnit("Million", 1000000l)
+object DisplayUnitThousand extends DisplayUnit("Million", 1000l)
+object DisplayUnitDefault extends DisplayUnit("", 1l)
 
 class ItemCountStatus(val name : String,
                       private val movingAveragesParam : Seq[MovingAverage] = Nil,
-                      val displayUnit : DisplayUnit = DisplayUnitMillion) {
+                      val displayUnit : DisplayUnit = DisplayUnitDefault) {
 
   val startTime = System.currentTimeMillis
   var count : Long = 0
@@ -84,6 +86,8 @@ class StatusInfo(val stage : Int,
   def elapsed = System.currentTimeMillis - startTime
   def elapsedString = formatTime(System.currentTimeMillis - startTime)
 
+  def getItemCountStatus(name : String) = itemCountStatus.find(_.name.equals(name))
+
 }
 
 
@@ -91,7 +95,7 @@ class StatusConsole(private val displayInterval : Long = 1000) {
 
   var lastDisplayTime = System.currentTimeMillis
 
-  var ONE_MILLION = 1000000l
+  //var ONE_MILLION = 1000000l
 
   var line = 2
   var col = 10
@@ -130,9 +134,8 @@ class StatusConsole(private val displayInterval : Long = 1000) {
 
       statusInfo.itemCountStatus.foreach((itemCountStatus) => {
 
-        putString("%.3f %s %s processed                            ".format(itemCountStatus.countInUnit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
-        putString("%.3f %s %s/sec (cumulative average)             ".format(itemCountStatus.avgRate / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
-        putString("%d %s                                           ".format(itemCountStatus.count, itemCountStatus.name))
+        putString("%,.3f %s %s                                    ".format(itemCountStatus.countInUnit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
+        putString("%.3f %s %s/sec (cumulative average)            ".format(itemCountStatus.avgRate / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
 
         itemCountStatus.movingAverages.foreach( (movingAverage) =>
 
@@ -155,7 +158,7 @@ class StatusConsole(private val displayInterval : Long = 1000) {
 
       putString("%d %s processed,                                                      ".format(itemCountStatus.count, itemCountStatus.name))
       //putString("%.3f %s %s/sec (average); %.3fM %s/sec (average)                       ".format(itemCountStatus.avgRate / ONE_MILLION, itemCountStatus.displayUnit.name, itemCountStatus.name))
-      putString("%.3f %s %s/sec (average);                                             ".format(itemCountStatus.avgRate / ONE_MILLION, itemCountStatus.displayUnit.name, itemCountStatus.name))
+      putString("%.3f %s %s/sec (average);                                             ".format(itemCountStatus.avgRate, itemCountStatus.displayUnit.name, itemCountStatus.name))
     })
 
     putString("                                                                      ")
@@ -172,16 +175,16 @@ class StatusConsole(private val displayInterval : Long = 1000) {
     }
   }
 
-  def logStatus(processStartTime: Long, rdfLineCount: Long) = {
-    val curTime = System.currentTimeMillis
-    checkForExit
-    if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
-      // logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
-      //   "; last 10M: " + formatTime(curTime - lastTime) +
-      //   "; process elapsed: " + formatTime(curTime - processStartTime))
-      //lastTime = curTime
-    }
-  }
+//  def logStatus(processStartTime: Long, rdfLineCount: Long) = {
+//    val curTime = System.currentTimeMillis
+//    checkForExit
+//    if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
+//      // logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
+//      //   "; last 10M: " + formatTime(curTime - lastTime) +
+//      //   "; process elapsed: " + formatTime(curTime - processStartTime))
+//      //lastTime = curTime
+//    }
+//  }
 
 
 }
