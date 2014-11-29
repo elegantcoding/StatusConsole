@@ -3,6 +3,8 @@ package com.elegantcoding.statuscosole
 import com.googlecode.lanterna.TerminalFacade
 import java.nio.charset.Charset
 
+import scala.collection.mutable.StringBuilder
+
 case class MovingAverage(name: String, interval: Long)
 
 case class DisplayUnit(name: String, unit: Long)
@@ -90,33 +92,56 @@ class StatusInfo(val stage : Int,
 
   def getItemCountStatus(name : String) = itemCountStatus.find(_.name.equals(name))
 
+  override def toString = {
+
+    val stringBuilder = new StringBuilder()
+
+    itemCountStatus.foreach((itemCountStatus) => {
+
+      stringBuilder.append("%,.3f %s %s                                    \n".format(itemCountStatus.countInUnit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
+      stringBuilder.append("%.3f %s %s/sec (cumulative average)            \n".format(itemCountStatus.avgRate / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
+
+      itemCountStatus.movingAverages.foreach( (movingAverage) =>
+
+        stringBuilder.append("%.3f %s %s/sec %s        \n".format(movingAverage.latestMovingAvg / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name, movingAverage.name))
+      )
+    })
+    ////      putString("%d %s                                          ".format(itemCount, itemDesc))
+    ////      putString("%.3fM %s/sec (10 second moving average)        ".format(shortItemMovingAvg / ONE_MILLION, itemDesc))
+    //      //putString("%2.2f%% complete (approx.)                     ".format(lines.toDouble / total * 100))
+    //      //putString("%s time remaining (approx.)                    ".format(formatTime(((total - lines) / longMovingAvg * 1000).toLong)))
+
+    stringBuilder.toString
+  }
+
 }
 
-
-class StatusConsole(private val displayInterval : Long = 1000) {
+class StatusConsole(private val screenMessage : String, private val displayInterval : Long = 1000) {
 
   var lastDisplayTime = System.currentTimeMillis
 
-  //var ONE_MILLION = 1000000l
-
   var line = 2
-  var col = 10
+  //var col = 10
   val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
   terminal.enterPrivateMode
   clear
   terminal.setCursorVisible(false)
 
+  def putText(text : String) = {
+
+    text.split("\\n").foreach(putString(_))
+  }
+
   def putString(str:String) = {
     terminal.moveCursor(10, line)
     line += 1
-    str.foreach(c => terminal.putCharacter(c))
+    str.foreach(terminal.putCharacter(_))
   }
 
   def clear = {
     terminal.clearScreen
     line = 1
-    col = 10
-    putString("press ctrl-C to quit")
+    putString(screenMessage)
   }
 
   def displayProgress(statusInfo : StatusInfo) : Unit = {
@@ -128,32 +153,16 @@ class StatusConsole(private val displayInterval : Long = 1000) {
 
     //logStatus(statusInfo.startTime, lines)
 
-
       line = statusInfo.stage * 4 - 2
-      col = 10
       putString("stage %d (%s)...                               ".format(statusInfo.stage, statusInfo.stageDescription))
       putString("%s elapsed                                     ".format(statusInfo.elapsedString))
 
-      statusInfo.itemCountStatus.foreach((itemCountStatus) => {
-
-        putString("%,.3f %s %s                                    ".format(itemCountStatus.countInUnit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
-        putString("%.3f %s %s/sec (cumulative average)            ".format(itemCountStatus.avgRate / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
-
-        itemCountStatus.movingAverages.foreach( (movingAverage) =>
-
-          putString("%.3f %s %s/sec %s        ".format(movingAverage.latestMovingAvg / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name, movingAverage.name))
-        )
-      })
-//      putString("%d %s                                          ".format(itemCount, itemDesc))
-//      putString("%.3fM %s/sec (10 second moving average)        ".format(shortItemMovingAvg / ONE_MILLION, itemDesc))
-      //putString("%2.2f%% complete (approx.)                     ".format(lines.toDouble / total * 100))
-      //putString("%s time remaining (approx.)                    ".format(formatTime(((total - lines) / longMovingAvg * 1000).toLong)))
+      putText(statusInfo.toString)
   }
 
   def displayDone(statusInfo : StatusInfo) = {
 
     line = statusInfo.stage * 4 - 2
-    col = 10
     putString("stage %d (%s) complete. elapsed: %s                                   ".format(statusInfo.stage, statusInfo.stageDescription, statusInfo.elapsedString))
 
     statusInfo.itemCountStatus.foreach((itemCountStatus) => {
@@ -166,12 +175,10 @@ class StatusConsole(private val displayInterval : Long = 1000) {
     putString("                                                                      ")
   }
 
-  //def cleanupTerminal = terminal.exitPrivateMode()
 
   def checkForExit = {
     val key = terminal.readInput()
     if (key != null && key.isCtrlPressed && key.getCharacter == 'c') {
-      //cleanupTerminal
       terminal.exitPrivateMode()
       System.exit(0)
     }

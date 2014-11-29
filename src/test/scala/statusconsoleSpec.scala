@@ -5,13 +5,18 @@ class statusconsoleSpec extends FlatSpec with ShouldMatchers {
 
   //var log = Logger(LoggerFactory.getLogger("freebase2neoSpec"))
 
-  val statusConsole = new StatusConsole();
+  val SCREEN_MESSAGE = "statusconsoleSpec : press ctrl-C to quit"
+
+  val statusConsole = new StatusConsole(SCREEN_MESSAGE);
 
   val COUNT = "count"
   val COUNT_THOUSAND = "count "
   val FIZZ = "fizz"
   val BUZZ = "buzz"
   val FIZZ_BUZZ = "fizz buzz"
+
+  // This test should never fail, in fact it will probably take too long to run. It is designed to visually assess the functionality
+  // It uses fizz-buzz in liu of more meaningful output.
 
   "statusconsole" should "be able to display fizz buzz" in {
 
