@@ -10,17 +10,19 @@ case class MovingAverage(name: String, interval: Long)
 case class DisplayUnit(name: String, unit: Long)
 
 object DisplayUnitMillion extends DisplayUnit("Million", 1000000l)
+
 object DisplayUnitThousand extends DisplayUnit("Thousand", 1000l)
+
 object DisplayUnitDefault extends DisplayUnit("", 1l)
 
-class ItemCountStatus(val name : String,
-                      private val movingAveragesParam : Seq[MovingAverage] = Nil,
-                      val displayUnit : DisplayUnit = DisplayUnitDefault,
-                      val showUnit : Boolean = true,
-                      val showAverage : Boolean = true) {
+class ItemCountStatus(val name: String,
+                      private val movingAveragesParam: Seq[MovingAverage] = Nil,
+                      val displayUnit: DisplayUnit = DisplayUnitDefault,
+                      val showUnit: Boolean = true,
+                      val showAverage: Boolean = false) {
 
   val startTime = System.currentTimeMillis
-  var count : Long = 0
+  var count: Long = 0
   var lastAvgTime = System.currentTimeMillis
 
   def incCount = count = count + 1
@@ -29,16 +31,18 @@ class ItemCountStatus(val name : String,
 
   // There must be a better way to do this: have this be both publicly accessible and an inner class
 
-  val movingAverages = movingAveragesParam.map{ new MovingAverageImpl(_) }
+  val movingAverages = movingAveragesParam.map {
+    new MovingAverageImpl(_)
+  }
 
-  class MovingAverageImpl (private val movingAverage : MovingAverage) {
+  class MovingAverageImpl(private val movingAverage: MovingAverage) {
 
     val name = movingAverage.name
     val interval = movingAverage.interval
 
-    private var movingAverageValues = Seq[(Long,Long)]((0,0))
+    private var movingAverageValues = Seq[(Long, Long)]((0, 0))
 
-    def latestMovingAvg : Double = {
+    def latestMovingAvg: Double = {
 
       val elapsed = System.currentTimeMillis - startTime
 
@@ -48,7 +52,7 @@ class ItemCountStatus(val name : String,
         movingAverageValues = movingAverageValues.tail
       }
 
-      if(elapsed == movingAverageValues.head._2) {
+      if (elapsed == movingAverageValues.head._2) {
         0.0
       } else {
         (count - movingAverageValues.head._1) / (elapsed - movingAverageValues.head._2) * 1000.0
@@ -57,7 +61,8 @@ class ItemCountStatus(val name : String,
   }
 
   def elapsed = {
-    val elapsedTime = System.currentTimeMillis - startTime; if (0 == elapsedTime) 1l else elapsedTime
+    val elapsedTime = System.currentTimeMillis - startTime;
+    if (0 == elapsedTime) 1l else elapsedTime
   }
 
   def avgRate = count / elapsed * 1000.0
@@ -67,30 +72,33 @@ class ItemCountStatus(val name : String,
     val curTime = System.currentTimeMillis
 
     if (curTime - 1000 > lastAvgTime) {
-        lastAvgTime = curTime
+      lastAvgTime = curTime
     }
 
     lastAvgTime
   }
 }
 
-class StatusInfo(val stage : Int,
-                 val stageDescription : String,
-                 val itemCountStatus : Seq[ItemCountStatus]) {
+class StatusInfo(val stage: Int,
+                 val stageDescription: String,
+                 val itemCountStatus: Seq[ItemCountStatus]) {
 
   val startTime = System.currentTimeMillis
 
-  def formatTime(time : Long) = {
+  val MILLI_PER_SEC = 1000l
+
+  def formatTime(time: Long) = {
     "%02d:%02d:%02d".format(
-      time / (1000 * 60 * 60),
-      (time / (1000 * 60)) % 60,
-      (time / 1000) % 60)
+      time / (MILLI_PER_SEC * 60 * 60),
+      (time / (MILLI_PER_SEC * 60)) % 60,
+      (time / MILLI_PER_SEC) % 60)
   }
 
   def elapsed = System.currentTimeMillis - startTime
+
   def elapsedString = formatTime(System.currentTimeMillis - startTime)
 
-  def getItemCountStatus(name : String) = itemCountStatus.find(_.name.equals(name))
+  def getItemCountStatus(name: String) = itemCountStatus.find(_.name.equals(name))
 
   override def toString = {
 
@@ -99,11 +107,14 @@ class StatusInfo(val stage : Int,
     itemCountStatus.foreach((itemCountStatus) => {
 
       stringBuilder.append("%,.3f %s %s                                    \n".format(itemCountStatus.countInUnit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
-      stringBuilder.append("%.3f %s %s/sec (cumulative average)            \n".format(itemCountStatus.avgRate / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
 
-      itemCountStatus.movingAverages.foreach( (movingAverage) =>
+      if(itemCountStatus.showAverage) {
+        stringBuilder.append("%,.3f %s %s/sec (cumulative average)            \n".format(itemCountStatus.avgRate / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name))
+      }
 
-        stringBuilder.append("%.3f %s %s/sec %s        \n".format(movingAverage.latestMovingAvg / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name, movingAverage.name))
+      itemCountStatus.movingAverages.foreach((movingAverage) =>
+
+        stringBuilder.append("%,.3f %s %s/sec %s        \n".format(movingAverage.latestMovingAvg / itemCountStatus.displayUnit.unit.toDouble, itemCountStatus.displayUnit.name, itemCountStatus.name, movingAverage.name))
       )
     })
     ////      putString("%d %s                                          ".format(itemCount, itemDesc))
@@ -116,60 +127,59 @@ class StatusInfo(val stage : Int,
 
 }
 
-class StatusConsole(private val screenMessage : String, private val displayInterval : Long = 1000) {
+class StatusConsole(private val screenMessage: String, private val displayInterval: Long = 1000, private val column: Int = 10) {
 
   var lastDisplayTime = System.currentTimeMillis
 
-  var line = 2
-  //var col = 10
+  var row = 2
   val terminal = TerminalFacade.createTerminal(Charset.forName("UTF8"))
   terminal.enterPrivateMode
   clear
   terminal.setCursorVisible(false)
 
-  def putText(text : String) = {
+  def putText(text: String) = {
 
     text.split("\\n").foreach(putString(_))
   }
 
-  def putString(str:String) = {
-    terminal.moveCursor(10, line)
-    line += 1
+  def putString(str: String) = {
+    terminal.moveCursor(column, row)
+    row += 1
     str.foreach(terminal.putCharacter(_))
   }
 
   def clear = {
     terminal.clearScreen
-    line = 1
+    row = 1
     putString(screenMessage)
   }
 
-  def displayProgress(statusInfo : StatusInfo) : Unit = {
+  def displayProgress(statusInfo: StatusInfo): Unit = {
 
-      if((System.currentTimeMillis - displayInterval) <=  lastDisplayTime)
-        return
+    if ((System.currentTimeMillis - displayInterval) <= lastDisplayTime)
+      return
 
     lastDisplayTime = System.currentTimeMillis
 
     //logStatus(statusInfo.startTime, lines)
 
-      line = statusInfo.stage * 4 - 2
-      putString("stage %d (%s)...                               ".format(statusInfo.stage, statusInfo.stageDescription))
-      putString("%s elapsed                                     ".format(statusInfo.elapsedString))
+    row = statusInfo.stage * 4 - 2
+    putString("stage %d (%s)...                               ".format(statusInfo.stage, statusInfo.stageDescription))
+    putString("%s elapsed                                     ".format(statusInfo.elapsedString))
 
-      putText(statusInfo.toString)
+    putText(statusInfo.toString)
   }
 
-  def displayDone(statusInfo : StatusInfo) = {
+  def displayDone(statusInfo: StatusInfo) = {
 
-    line = statusInfo.stage * 4 - 2
+    row = statusInfo.stage * 4 - 2
     putString("stage %d (%s) complete. elapsed: %s                                   ".format(statusInfo.stage, statusInfo.stageDescription, statusInfo.elapsedString))
 
     statusInfo.itemCountStatus.foreach((itemCountStatus) => {
 
       putString("%d %s processed,                                                      ".format(itemCountStatus.count, itemCountStatus.name))
       //putString("%.3f %s %s/sec (average); %.3fM %s/sec (average)                       ".format(itemCountStatus.avgRate / ONE_MILLION, itemCountStatus.displayUnit.name, itemCountStatus.name))
-      putString("%.3f %s %s/sec (average);                                             ".format(itemCountStatus.avgRate, itemCountStatus.displayUnit.name, itemCountStatus.name))
+      putString("%,.3f %s %s/sec (average);                                             ".format(itemCountStatus.avgRate, itemCountStatus.displayUnit.name, itemCountStatus.name))
     })
 
     putString("                                                                      ")
@@ -184,16 +194,16 @@ class StatusConsole(private val screenMessage : String, private val displayInter
     }
   }
 
-//  def logStatus(processStartTime: Long, rdfLineCount: Long) = {
-//    val curTime = System.currentTimeMillis
-//    checkForExit
-//    if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
-//      // logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
-//      //   "; last 10M: " + formatTime(curTime - lastTime) +
-//      //   "; process elapsed: " + formatTime(curTime - processStartTime))
-//      //lastTime = curTime
-//    }
-//  }
+  //  def logStatus(processStartTime: Long, rdfLineCount: Long) = {
+  //    val curTime = System.currentTimeMillis
+  //    checkForExit
+  //    if (rdfLineCount % (ONE_MILLION * 10L) == 0) {
+  //      // logger.info(": " + rdfLineCount / 1000000 + "M tripleString lines processed" +
+  //      //   "; last 10M: " + formatTime(curTime - lastTime) +
+  //      //   "; process elapsed: " + formatTime(curTime - processStartTime))
+  //      //lastTime = curTime
+  //    }
+  //  }
 
 
 }
